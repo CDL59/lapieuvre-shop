@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Pieuvre — Panel propriétaire</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#05070e;--ink:#eef2f9;--muted:#8b94a8;--line:rgba(255,255,255,.09);--glass:rgba(255,255,255,.045);
+  --teal:#3ee0d0;--blue:#5fb8ff;--violet:#9a7bff;--grad:linear-gradient(135deg,#3ee0d0,#5fb8ff);--glow:rgba(62,224,208,.5);
+  --ok:#3ee0d0;--warn:#ffc760;--err:#ff7a7a;--shadow:0 24px 60px -28px rgba(0,0,0,.7)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.55;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse 60% 45% at 50% 0%,rgba(62,224,208,.07),transparent 60%),radial-gradient(ellipse 50% 40% at 90% 20%,rgba(95,184,255,.05),transparent 60%)}
+.mono{font-family:'Space Grotesk',monospace}
+.wrap{position:relative;z-index:1;max-width:920px;margin:0 auto;padding:30px 20px 80px}
+.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.brand .m{font-size:20px;filter:drop-shadow(0 0 8px var(--glow))}
+.tag{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--teal);font-weight:600;border:1px solid var(--line);padding:5px 11px;border-radius:100px}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:20px;padding:24px;backdrop-filter:blur(12px);box-shadow:var(--shadow)}
+h1{font-size:24px;font-weight:700;letter-spacing:-.5px}.lead{color:var(--muted);font-size:14px;font-weight:300;margin-top:6px}
+label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px 3px;font-weight:500}
+input,select{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:11px;padding:12px 14px;color:var(--ink);font-size:15px;font-family:inherit;margin-bottom:13px;transition:.2s}
+input:focus,select:focus{outline:none;border-color:var(--teal);background:rgba(62,224,208,.06)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:11px;font-weight:600;font-size:14px;border:none;cursor:pointer;transition:.2s;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--grad);color:#04121a}.btn-primary:hover{box-shadow:0 8px 24px -10px var(--glow)}
+.btn-ghost{background:var(--glass);border:1px solid var(--line);color:var(--ink)}.btn-ghost:hover{background:rgba(255,255,255,.08)}
+.btn-warn{background:rgba(255,199,96,.12);border:1px solid rgba(255,199,96,.3);color:var(--warn)}
+.btn-err{background:rgba(255,122,122,.1);border:1px solid rgba(255,122,122,.3);color:var(--err)}
+.btn-sm{padding:8px 12px;font-size:12.5px;border-radius:9px}
+.full{width:100%}
+.msg{font-size:13px;padding:10px 13px;border-radius:10px;margin-bottom:13px;display:none}
+.msg.show{display:block}.msg.err{background:rgba(255,122,122,.1);color:var(--err);border:1px solid rgba(255,122,122,.25)}
+.msg.ok{background:rgba(62,224,208,.1);color:var(--teal);border:1px solid rgba(62,224,208,.25)}
+/* lock */
+.lock{max-width:430px;margin:8vh auto 0}
+/* dashboard */
+.bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:12px}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:var(--glass);border:1px solid var(--line);border-radius:13px;padding:11px 16px;min-width:92px}
+.stat .n{font-family:'Space Grotesk';font-size:22px;font-weight:700}.stat .l{font-size:11px;color:var(--muted)}
+.client{background:var(--glass);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:13px;transition:.2s}
+.client:hover{border-color:rgba(255,255,255,.14)}
+.crow{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.cinfo .cn{font-weight:600;font-size:15.5px}.cinfo .ce{font-size:12.5px;color:var(--muted)}
+.pill{font-size:11px;font-weight:600;padding:5px 11px;border-radius:100px;border:1px solid;white-space:nowrap}
+.pill.active{color:var(--ok);border-color:rgba(62,224,208,.3);background:rgba(62,224,208,.08)}
+.pill.waiting_provision{color:var(--blue);border-color:rgba(95,184,255,.3);background:rgba(95,184,255,.08)}
+.pill.needs_payment{color:var(--warn);border-color:rgba(255,199,96,.3);background:rgba(255,199,96,.08)}
+.pill.suspended{color:var(--err);border-color:rgba(255,122,122,.3);background:rgba(255,122,122,.08)}
+.meta{font-size:12px;color:var(--muted);margin-top:8px;display:flex;gap:14px;flex-wrap:wrap}
+.meta b{color:var(--ink);font-weight:500}
+.expand{margin-top:15px;padding-top:15px;border-top:1px solid var(--line);display:none}
+.expand.open{display:block;animation:fade .3s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}@media(max-width:560px){.grid2{grid-template-columns:1fr}}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
+.hint{font-size:12px;color:var(--muted);background:rgba(95,184,255,.06);border:1px solid rgba(95,184,255,.18);border-radius:11px;padding:11px 13px;margin-bottom:14px}
+.ghelp{font-size:11.5px;color:var(--muted);background:rgba(255,199,96,.06);border:1px solid rgba(255,199,96,.18);border-radius:10px;padding:9px 12px;margin-bottom:12px;line-height:1.5}
+.ghelp .mono{color:var(--ink);font-size:11px}
+.gblock{margin-bottom:4px}
+.empty{text-align:center;color:var(--muted);padding:50px 0}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand"><span class="m">🐙</span>La&nbsp;Pieuvre <span class="tag" style="margin-left:6px">Propriétaire</span></div>
+    <button class="btn btn-ghost btn-sm" id="logout" style="display:none">Verrouiller</button>
+  </div>
+
+  <!-- LOCK -->
+  <section id="lock" class="lock">
+    <div class="card">
+      <h1>Panel propriétaire</h1>
+      <p class="lead">Accès réservé. Entrez votre clé propriétaire pour gérer vos clients.</p>
+      <div class="msg" id="lock-msg" style="margin-top:18px"></div>
+      <div style="margin-top:18px">
+        <label>URL du backend</label>
+        <input id="i-api" type="text" placeholder="https://votre-backend.up.railway.app">
+        <label>Clé propriétaire (OWNER_KEY)</label>
+        <input id="i-key" type="password" placeholder="••••••••••••">
+        <button class="btn btn-primary full" id="unlock">Déverrouiller →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section id="dash" style="display:none">
+    <div class="bar">
+      <div class="stats" id="stats"></div>
+      <button class="btn btn-ghost btn-sm" id="refresh">↻ Actualiser</button>
+    </div>
+    <div class="hint">📌 Flux : le client paie → il apparaît en <b>« En attente de livraison »</b>. Créez son bot via @BotFather + ses groupes, ajoutez le bot comme admin, puis collez le token ici → tout se met en place et son espace se débloque.</div>
+    <div class="msg" id="dash-msg"></div>
+    <div id="list"></div>
+  </section>
+
+  <div class="foot">La Pieuvre · Panel propriétaire — accès & données réservés.</div>
+</div>
+
+<script>
+/* Panel propriétaire — pilote le backend SaaS.
+   L'URL du backend et la clé sont saisies au déverrouillage (jamais en dur). */
+let API='', KEY='';
+const $=s=>document.querySelector(s);
+const STATE_LABEL={active:'Actif',waiting_provision:'En attente de livraison',needs_payment:'Paiement en attente',suspended:'Suspendu (impayé)'};
+function flash(el,t,c){el.textContent=t;el.className='msg show '+c;}
+
+async function api(path,opts={}){
+  const r=await fetch(API+path,{...opts,headers:{'Content-Type':'application/json','X-Owner-Key':KEY,...(opts.headers||{})}});
+  let b={};try{b=await r.json()}catch(e){}
+  return {status:r.status,body:b};
+}
+
+/* unlock */
+$('#unlock').onclick=async()=>{
+  API=$('#i-api').value.trim().replace(/\/$/,'');
+  KEY=$('#i-key').value.trim();
+  const m=$('#lock-msg');
+  if(!API){return flash(m,'Indiquez l\'URL du backend.','err');}
+  if(!KEY){return flash(m,'Indiquez la clé propriétaire.','err');}
+  flash(m,'Connexion…','ok');
+  try{
+    const {status}=await api('/api/owner/clients');
+    if(status===403){return flash(m,'Clé refusée.','err');}
+    if(status!==200){return flash(m,'Backend injoignable (vérifiez l\'URL).','err');}
+    localStorage.setItem('lp_owner',JSON.stringify({API,KEY}));
+    enterDash();
+  }catch(e){flash(m,'Backend injoignable : '+e.message,'err');}
+};
+$('#logout').onclick=()=>{localStorage.removeItem('lp_owner');location.reload();};
+$('#refresh').onclick=load;
+
+function enterDash(){$('#lock').style.display='none';$('#dash').style.display='block';$('#logout').style.display='inline-flex';load();}
+
+async function load(){
+  const {status,body}=await api('/api/owner/clients');
+  if(status!==200){flash($('#dash-msg'),'Erreur de chargement.','err');return;}
+  const cs=body.clients||[];
+  const by=s=>cs.filter(c=>c.state===s).length;
+  $('#stats').innerHTML=`
+    <div class="stat"><div class="n">${cs.length}</div><div class="l">Clients</div></div>
+    <div class="stat"><div class="n" style="color:var(--ok)">${by('active')}</div><div class="l">Actifs</div></div>
+    <div class="stat"><div class="n" style="color:var(--blue)">${by('waiting_provision')}</div><div class="l">À livrer</div></div>
+    <div class="stat"><div class="n" style="color:var(--err)">${by('suspended')}</div><div class="l">Suspendus</div></div>`;
+  if(!cs.length){$('#list').innerHTML='<div class="empty">Aucun client pour l\'instant.</div>';return;}
+  $('#list').innerHTML=cs.map(render).join('');
+  cs.forEach(c=>bind(c.id));
+}
+
+function render(c){
+  const needsProv=c.state==='waiting_provision' || (!c.provisioned);
+  return `<div class="client" data-id="${c.id}">
+    <div class="crow">
+      <div class="cinfo"><div class="cn">${esc(c.name)}</div><div class="ce">${esc(c.email)} · ${c.plan}</div></div>
+      <span class="pill ${c.state}">${STATE_LABEL[c.state]||c.state}</span>
+    </div>
+    <div class="meta">
+      <span>Bot : <b>${c.bot_username||'—'}</b></span>
+      <span>Token : <b>${c.has_token?c.token_masked:'non renseigné'}</b></span>
+      <span>Abonnement : <b>${c.sub_status}</b></span>
+    </div>
+    <div class="actions">
+      <button class="btn btn-ghost btn-sm" data-act="toggle" data-id="${c.id}">${needsProv?'⬇ Provisionner':'⚙ Gérer'}</button>
+    </div>
+    <div class="expand" id="exp-${c.id}">
+      <label>Token du bot (BotFather)</label>
+      <input id="tok-${c.id}" type="text" placeholder="123456789:AA...">
+      <div class="ghelp">💡 L'<b>ID de groupe</b> (ex. <span class="mono">-1001234567890</span>) sert au bot pour <b>envoyer</b> les messages. Pour l'obtenir : ajoute le bot au groupe, puis ouvre <span class="mono">api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</span> (ou utilise @getidsbot) → copie le <span class="mono">chat.id</span>.</div>
+      ${grpField(c,'liv','Groupe Livraison')}
+      ${grpField(c,'sur','Groupe Sur place')}
+      ${grpField(c,'lvr','Groupe Livreur (Premium)')}
+      <button class="btn btn-primary full" data-act="provision" data-id="${c.id}" style="margin-top:6px">🚀 Déployer / mettre à jour</button>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn btn-ghost btn-sm" data-act="sub" data-id="${c.id}" data-s="active">✓ Réactiver</button>
+        <button class="btn btn-warn btn-sm" data-act="sub" data-id="${c.id}" data-s="past_due">⏸ Suspendre</button>
+        <button class="btn btn-err btn-sm" data-act="sub" data-id="${c.id}" data-s="canceled">✕ Annuler</button>
+      </div>
+    </div>
+  </div>`;
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function grpField(c,k,label){
+  const g=c.groups||{};
+  return `<div class="gblock"><label>${label}</label><div class="grid2">
+    <input id="${k}-${c.id}" placeholder="Lien d'invitation (https://t.me/+...)" value="${esc(g[k]||'')}">
+    <input id="${k}id-${c.id}" placeholder="ID du groupe (-100...)" value="${esc(g[k+'id']||'')}">
+  </div></div>`;
+}
+
+function bind(id){
+  document.querySelectorAll(`[data-id="${id}"]`).forEach(el=>{
+    const act=el.dataset.act;if(!act)return;
+    el.onclick=async()=>{
+      if(act==='toggle'){$('#exp-'+id).classList.toggle('open');return;}
+      if(act==='provision'){
+        const token=$('#tok-'+id).value.trim();
+        if(!token||!token.includes(':'))return flash($('#dash-msg'),'Token invalide.','err');
+        const {status,body}=await api('/api/owner/provision',{method:'POST',body:JSON.stringify({
+          client_id:id,bot_token:token,
+          grp_livraison:$('#liv-'+id).value.trim(),grp_surplace:$('#sur-'+id).value.trim(),grp_livreur:$('#lvr-'+id).value.trim(),
+          id_livraison:$('#livid-'+id).value.trim(),id_surplace:$('#surid-'+id).value.trim(),id_livreur:$('#lvrid-'+id).value.trim()
+        })});
+        if(status===200){flash($('#dash-msg'),'✓ '+(body.client.name)+' provisionné'+(body.webhook_set?' (webhook posé).':'.'),'ok');load();}
+        else flash($('#dash-msg'),'Erreur : '+(body.error||status)+(body.detail?' — '+body.detail:''),'err');
+      }
+      if(act==='sub'){
+        const {status,body}=await api('/api/owner/sub',{method:'POST',body:JSON.stringify({client_id:id,status:el.dataset.s})});
+        if(status===200){flash($('#dash-msg'),'✓ Abonnement mis à jour ('+el.dataset.s+').','ok');load();}
+        else flash($('#dash-msg'),'Erreur : '+(body.error||status),'err');
+      }
+    };
+  });
+}
+
+/* auto-reconnect */
+(function(){try{const s=JSON.parse(localStorage.getItem('lp_owner'));if(s&&s.API&&s.KEY){API=s.API;KEY=s.KEY;$('#i-api').value=API;enterDash();}}catch(e){}})();
+</script>
+</body>
+</html>
