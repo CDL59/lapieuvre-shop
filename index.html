@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La Pieuvre — CDL · Automatisation pour boutiques Telegram</title>
+<meta name="description" content="CDL déploie un bot Telegram dédié à votre marque : mini-app de commande, notifications en temps réel, tableau de bord admin et espace livreur. Gérez vos commandes et vos livraisons depuis un seul endroit.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05080e;
+  --bg-soft:#0a0f18;
+  --ink:#e9eef6;
+  --muted:#8b94a6;
+  --line:rgba(255,255,255,.07);
+  --card:rgba(255,255,255,.025);
+  --card-hover:rgba(255,255,255,.045);
+  --teal:#34d8c9;
+  --teal-soft:#5fb8ff;
+  --accent:linear-gradient(135deg,#34d8c9,#5fb8ff);
+  --glow:rgba(52,216,201,.5);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Sora',sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  overflow-x:hidden;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+.mono{font-family:'Space Grotesk',monospace}
+
+/* ===== 3D canvas ===== */
+#bg-canvas{position:fixed;inset:0;z-index:0;opacity:.85}
+.bg-veil{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 38%,transparent 45%,var(--bg) 92%),
+    linear-gradient(180deg,rgba(5,8,14,.55) 0%,transparent 25%,transparent 70%,var(--bg) 100%);}
+
+/* ===== Layout ===== */
+.wrap{position:relative;z-index:2}
+.container{max-width:1140px;margin:0 auto;padding:0 26px}
+section{position:relative}
+
+/* ===== Nav ===== */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:20px 0;transition:.35s ease}
+nav.scrolled{background:rgba(5,8,14,.78);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:13px 0}
+.nav-in{display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:11px;font-weight:700;font-size:18px;letter-spacing:.3px}
+.logo-mark{width:30px;height:30px;display:grid;place-items:center;font-size:19px;filter:drop-shadow(0 0 8px var(--glow))}
+.nav-links{display:flex;gap:36px;align-items:center;font-size:14.5px;color:var(--muted);font-weight:400}
+.nav-links a{transition:.2s}
+.nav-links a:hover{color:var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:10px;font-weight:600;font-size:14.5px;
+  border:none;cursor:pointer;transition:.25s ease;font-family:inherit}
+.btn-primary{background:var(--accent);color:#04181a;box-shadow:0 6px 22px -10px var(--glow)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 10px 28px -10px var(--glow)}
+.btn-ghost{background:var(--card);border:1px solid var(--line);color:var(--ink)}
+.btn-ghost:hover{background:var(--card-hover);border-color:rgba(52,216,201,.35)}
+.nav-toggle{display:none;background:none;border:none;color:var(--ink);font-size:23px;cursor:pointer}
+@media(max-width:820px){.nav-links{display:none}.nav-toggle{display:block}}
+
+/* ===== Hero ===== */
+.hero{min-height:100vh;display:flex;align-items:center;padding:130px 0 90px;text-align:center}
+.hero-in{max-width:840px;margin:0 auto}
+.eyebrow{display:inline-flex;align-items:center;gap:9px;padding:7px 16px;border-radius:100px;
+  background:var(--card);border:1px solid var(--line);font-size:12px;letter-spacing:2.5px;
+  text-transform:uppercase;color:var(--teal);font-weight:500;margin-bottom:30px}
+.eyebrow .pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+h1{font-size:clamp(36px,6.2vw,68px);font-weight:700;line-height:1.08;letter-spacing:-1.4px;margin-bottom:24px}
+h1 .grad{background:var(--accent);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p.lead{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:600px;margin:0 auto 38px;font-weight:300}
+.hero p.lead strong{color:var(--ink);font-weight:500}
+.hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.hero-chips{display:flex;gap:12px;justify-content:center;margin-top:60px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:9px;padding:10px 18px;border-radius:12px;background:var(--card);
+  border:1px solid var(--line);font-size:13.5px;color:var(--muted);font-weight:400}
+.chip svg{flex-shrink:0}
+.scroll-hint{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);color:var(--muted);font-size:11px;
+  letter-spacing:1.5px;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:7px;
+  animation:float 2.6s ease-in-out infinite;opacity:.7}
+@keyframes float{0%,100%{transform:translate(-50%,0)}50%{transform:translate(-50%,7px)}}
+
+/* ===== Reveal ===== */
+.reveal{opacity:0;transform:translateY(22px);transition:.7s cubic-bezier(.16,1,.3,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}.reveal.d3{transition-delay:.24s}
+
+/* ===== Section heads ===== */
+.shead{text-align:center;max-width:640px;margin:0 auto 60px}
+.shead .tag{font-size:12px;letter-spacing:3px;text-transform:uppercase;color:var(--teal);font-weight:600;margin-bottom:16px;display:block}
+.shead h2{font-size:clamp(27px,4vw,42px);font-weight:700;letter-spacing:-.8px;line-height:1.15;margin-bottom:16px}
+.shead p{color:var(--muted);font-size:16.5px;font-weight:300}
+
+/* ===== Features ===== */
+.features{padding:110px 0}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:880px){.feat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.feat-grid{grid-template-columns:1fr}}
+.feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:30px 26px;transition:.3s ease}
+.feat:hover{background:var(--card-hover);border-color:rgba(52,216,201,.25);transform:translateY(-3px)}
+.feat .ic{width:42px;height:42px;border-radius:11px;background:rgba(52,216,201,.1);border:1px solid rgba(52,216,201,.2);
+  display:grid;place-items:center;margin-bottom:18px}
+.feat h3{font-size:17px;margin-bottom:9px;font-weight:600}
+.feat p{color:var(--muted);font-size:14.5px;font-weight:300}
+
+/* ===== Product showcase ===== */
+.product{padding:110px 0}
+.product-wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:60px;align-items:center}
+@media(max-width:920px){.product-wrap{grid-template-columns:1fr;gap:50px}}
+.prod-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:8px;
+  background:rgba(52,216,201,.08);border:1px solid rgba(52,216,201,.25);color:var(--teal);
+  font-family:'Space Grotesk';font-weight:600;font-size:12.5px;letter-spacing:.5px;margin-bottom:22px}
+.product h2{font-size:clamp(28px,4.2vw,46px);font-weight:700;letter-spacing:-1px;margin-bottom:18px;line-height:1.1}
+.product .desc{color:var(--muted);font-size:16.5px;font-weight:300;margin-bottom:26px}
+.feat-list{display:flex;flex-direction:column;gap:13px;margin-bottom:32px;list-style:none}
+.feat-list li{display:flex;align-items:center;gap:13px;font-size:15px}
+.feat-list .chk{width:24px;height:24px;border-radius:7px;background:rgba(52,216,201,.12);border:1px solid rgba(52,216,201,.3);
+  display:grid;place-items:center;color:var(--teal);font-weight:700;font-size:12px;flex-shrink:0}
+
+/* ===== Phone mockup ===== */
+.phone-stage{display:flex;justify-content:center}
+.phone{width:288px;height:586px;border-radius:40px;background:linear-gradient(165deg,#0e1420,#070b12);
+  border:1px solid rgba(255,255,255,.09);padding:13px;position:relative;
+  box-shadow:0 40px 90px -45px rgba(52,216,201,.45),0 0 0 1px rgba(255,255,255,.03);
+  transform:perspective(1600px) rotateY(-11deg) rotateX(3deg);transition:.6s ease}
+.phone:hover{transform:perspective(1600px) rotateY(-3deg) rotateX(1deg)}
+.phone-notch{position:absolute;top:13px;left:50%;transform:translateX(-50%);width:108px;height:24px;
+  background:#05080e;border-radius:0 0 14px 14px;z-index:3}
+.phone-screen{width:100%;height:100%;border-radius:28px;background:#070b12;overflow:hidden;display:flex;flex-direction:column}
+.app-top{padding:38px 17px 13px;background:linear-gradient(180deg,rgba(52,216,201,.1),transparent);
+  display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.app-top .av{width:32px;height:32px;border-radius:9px;background:var(--accent);display:grid;place-items:center;font-weight:700;color:#04181a;font-size:11px}
+.app-top .nm{font-weight:600;font-size:13.5px}
+.app-top .st{font-size:10.5px;color:var(--teal);display:flex;align-items:center;gap:5px}
+.app-top .st::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal)}
+.app-body{flex:1;padding:14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.app-label{font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:1px}
+.order-card{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:12px;animation:slidein .55s cubic-bezier(.16,1,.3,1) backwards}
+.order-card .row1{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.order-card .cust{font-size:12.5px;font-weight:600}
+.order-card .badge{font-size:9px;padding:3px 8px;border-radius:100px;font-weight:600;letter-spacing:.3px}
+.b-new{background:rgba(52,216,201,.14);color:var(--teal)}
+.b-road{background:rgba(95,184,255,.14);color:var(--teal-soft)}
+.b-done{background:rgba(255,255,255,.07);color:var(--muted)}
+.order-card .meta{font-size:10.5px;color:var(--muted)}
+.order-card .price{font-size:14px;font-weight:700;font-family:'Space Grotesk';color:var(--teal)}
+@keyframes slidein{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.app-nav{display:flex;justify-content:space-around;padding:12px 0 17px;border-top:1px solid var(--line);font-size:16px}
+.app-nav span{opacity:.35}.app-nav span.act{opacity:1;filter:drop-shadow(0 0 6px var(--glow))}
+
+/* ===== Pricing ===== */
+.pricing{padding:110px 0}
+.price-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;max-width:840px;margin:0 auto}
+@media(max-width:780px){.price-grid{grid-template-columns:1fr;max-width:420px}}
+.price-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:38px 34px;position:relative;transition:.3s ease}
+.price-card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.12)}
+.price-card.feat{border-color:rgba(52,216,201,.35);background:linear-gradient(180deg,rgba(52,216,201,.05),var(--card))}
+.price-tag{position:absolute;top:22px;right:26px;font-size:10px;font-weight:700;letter-spacing:1px;color:var(--teal);
+  background:rgba(52,216,201,.1);border:1px solid rgba(52,216,201,.25);padding:5px 11px;border-radius:100px}
+.plan-name{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:6px}
+.plan-tagline{font-size:13.5px;color:var(--teal);margin-bottom:22px;font-weight:300}
+.plan-price{display:flex;align-items:baseline;gap:5px;margin-bottom:5px}
+.plan-price .amt{font-size:48px;font-weight:700;font-family:'Space Grotesk';letter-spacing:-1.5px}
+.plan-price .per{color:var(--muted);font-size:15px}
+.plan-sub{color:var(--muted);font-size:13px;margin-bottom:28px}
+.plan-feats{list-style:none;display:flex;flex-direction:column;gap:13px;margin-bottom:30px}
+.plan-feats li{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:#c4ccdb}
+.plan-feats .chk{width:20px;height:20px;border-radius:6px;flex-shrink:0;display:grid;place-items:center;font-size:10px;font-weight:700}
+.plan-feats .yes{background:rgba(52,216,201,.14);color:var(--teal)}
+.plan-feats .no{background:rgba(255,255,255,.04);color:var(--muted)}
+.plan-feats li.off{color:var(--muted);opacity:.55}
+.price-card .btn{width:100%;justify-content:center}
+
+/* ===== How ===== */
+.how{padding:110px 0}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+@media(max-width:880px){.steps{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.steps{grid-template-columns:1fr}}
+.step{padding:28px 22px;background:var(--card);border:1px solid var(--line);border-radius:16px;transition:.3s ease}
+.step:hover{border-color:rgba(52,216,201,.25);transform:translateY(-3px)}
+.step .n{font-family:'Space Grotesk';font-size:15px;font-weight:700;color:var(--teal);margin-bottom:14px;
+  width:34px;height:34px;border-radius:9px;background:rgba(52,216,201,.08);border:1px solid rgba(52,216,201,.2);display:grid;place-items:center}
+.step h4{font-size:16px;margin-bottom:7px;font-weight:600}
+.step p{font-size:13.5px;color:var(--muted);font-weight:300}
+
+/* ===== CTA ===== */
+.cta{padding:110px 0}
+.cta-box{background:linear-gradient(135deg,rgba(52,216,201,.07),rgba(95,184,255,.05));
+  border:1px solid var(--line);border-radius:26px;padding:66px 40px;text-align:center;position:relative;overflow:hidden}
+.cta-box::before{content:'🐙';position:absolute;font-size:240px;opacity:.03;top:50%;left:50%;transform:translate(-50%,-50%)}
+.cta-box h2{font-size:clamp(27px,4.2vw,44px);font-weight:700;letter-spacing:-.8px;margin-bottom:16px;position:relative}
+.cta-box p{color:var(--muted);font-size:17px;margin-bottom:30px;font-weight:300;position:relative}
+
+/* ===== Footer ===== */
+footer{padding:50px 0 38px;border-top:1px solid var(--line)}
+.foot-in{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px}
+.foot-links{display:flex;gap:26px;color:var(--muted);font-size:14px}
+.foot-links a:hover{color:var(--ink)}
+.copy{color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="bg-veil"></div>
+
+<div class="wrap">
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="container nav-in">
+    <a href="#" class="logo"><span class="logo-mark">🐙</span>La&nbsp;Pieuvre</a>
+    <div class="nav-links">
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#produit">Le produit</a>
+      <a href="#tarifs">Tarifs</a>
+      <a href="#process">Déploiement</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="compte/" class="btn btn-ghost">Se connecter</a>
+      <a href="#tarifs" class="btn btn-primary">Voir les offres</a>
+    </div>
+    <button class="nav-toggle">☰</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="container hero-in">
+    <div class="eyebrow reveal"><span class="pulse"></span>SaaS · Telegram · Automatisation</div>
+    <h1 class="reveal d1">L'infrastructure qui automatise<br>votre <span class="grad">boutique Telegram</span></h1>
+    <p class="lead reveal d2">CDL déploie un bot Telegram dédié à votre marque : <strong>mini-app de commande</strong>, notifications en temps réel et tableaux de bord. Vos commandes, vos livraisons et votre équipe — pilotées depuis un seul endroit.</p>
+    <div class="hero-cta reveal d3">
+      <a href="#produit" class="btn btn-primary">Découvrir CDL</a>
+      <a href="#tarifs" class="btn btn-ghost">Comparer les offres</a>
+    </div>
+    <div class="hero-chips reveal d3">
+      <div class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d8c9" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Bot dédié à votre marque</div>
+      <div class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d8c9" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Mini-app de commande</div>
+      <div class="chip"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d8c9" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>Tableaux de bord temps réel</div>
+    </div>
+  </div>
+  <div class="scroll-hint">Défiler<div style="font-size:15px">↓</div></div>
+</header>
+
+<!-- FONCTIONNALITES -->
+<section class="features" id="fonctionnalites">
+  <div class="container">
+    <div class="shead reveal">
+      <span class="tag">Ce que comprend CDL</span>
+      <h2>Tout l'outil, rien de superflu</h2>
+      <p>Une suite complète pour digitaliser la prise de commande et la coordination des livraisons.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat reveal d1">
+        <div class="ic">🤖</div>
+        <h3>Bot Telegram dédié</h3>
+        <p>Un bot à votre marque, déployé et configuré pour vous. Vos clients commandent directement depuis Telegram.</p>
+      </div>
+      <div class="feat reveal d1">
+        <div class="ic">📱</div>
+        <h3>Mini-app de commande</h3>
+        <p>Une interface de commande complète intégrée au bot. Simple, rapide, sans installation pour le client.</p>
+      </div>
+      <div class="feat reveal d2">
+        <div class="ic">🔔</div>
+        <h3>Notifications de groupe</h3>
+        <p>Chaque commande arrive instantanément dans vos groupes dédiés — Livraison et Sur place — au bon endroit.</p>
+      </div>
+      <div class="feat reveal d2">
+        <div class="ic">📊</div>
+        <h3>Tableau de bord admin</h3>
+        <p>Suivi des commandes, statistiques et chiffre d'affaires en temps réel, protégé par votre code secret privé.</p>
+      </div>
+      <div class="feat reveal d3">
+        <div class="ic">🛵</div>
+        <h3>Espace livreur</h3>
+        <p>Agenda, calendrier et attribution des livraisons. Chaque livreur voit ses courses et son planning.</p>
+      </div>
+      <div class="feat reveal d3">
+        <div class="ic">🛠️</div>
+        <h3>Mises à jour & support</h3>
+        <p>L'outil évolue en continu. Mises à jour automatiques et support inclus dans chaque formule.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRODUIT -->
+<section class="product" id="produit">
+  <div class="container">
+    <div class="product-wrap">
+      <div class="reveal">
+        <div class="prod-badge">⬡ CDL · Suite d'automatisation</div>
+        <h2>Le poste de pilotage<br>de votre activité.</h2>
+        <p class="desc">CDL n'est rien de plus que ce qu'il annonce : un bot Telegram, une mini-app de commande, des notifications et des tableaux de bord. C'est l'outil qui automatise et accélère votre prise de commande — vous gardez la main sur tout le reste.</p>
+        <ul class="feat-list">
+          <li><span class="chk">✓</span> Commandes reçues et triées automatiquement</li>
+          <li><span class="chk">✓</span> Notifications instantanées vers vos groupes</li>
+          <li><span class="chk">✓</span> Données privées, cloisonnées par compte</li>
+          <li><span class="chk">✓</span> Accessible depuis l'écran d'accueil iOS & Android</li>
+        </ul>
+        <a href="#tarifs" class="btn btn-primary">Choisir une formule</a>
+      </div>
+      <div class="reveal d2 phone-stage">
+        <div class="phone">
+          <div class="phone-notch"></div>
+          <div class="phone-screen">
+            <div class="app-top">
+              <div class="av">CDL</div>
+              <div><div class="nm">Votre boutique</div><div class="st">en ligne</div></div>
+            </div>
+            <div class="app-body">
+              <div class="app-label">Commandes du jour</div>
+              <div id="appFeed"></div>
+            </div>
+            <div class="app-nav"><span class="act">📋</span><span>📅</span><span>📊</span><span>👤</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TARIFS -->
+<section class="pricing" id="tarifs">
+  <div class="container">
+    <div class="shead reveal">
+      <span class="tag">Abonnements</span>
+      <h2>Deux formules, sans engagement</h2>
+      <p>Votre propre bot, vos propres groupes, vos propres données. Tout est isolé et privé.</p>
+    </div>
+    <div class="price-grid">
+      <div class="price-card reveal d1">
+        <div class="plan-name">Essentiel</div>
+        <div class="plan-tagline">Le moteur de commandes</div>
+        <div class="plan-price"><span class="amt">100€</span><span class="per">/mois</span></div>
+        <div class="plan-sub">Facturé mensuellement · résiliable à tout moment</div>
+        <ul class="plan-feats">
+          <li><span class="chk yes">✓</span> Bot Telegram dédié à votre marque</li>
+          <li><span class="chk yes">✓</span> Mini-app de commande complète</li>
+          <li><span class="chk yes">✓</span> Notifications groupe <strong>Livraison</strong></li>
+          <li><span class="chk yes">✓</span> Notifications groupe <strong>Sur place</strong></li>
+          <li><span class="chk yes">✓</span> Mises à jour & support inclus</li>
+          <li class="off"><span class="chk no">✕</span> Tableau de bord admin</li>
+          <li class="off"><span class="chk no">✕</span> Espace livreur</li>
+        </ul>
+        <a href="#contact" class="btn btn-ghost" data-plan="essentiel">Choisir Essentiel</a>
+      </div>
+      <div class="price-card feat reveal d2">
+        <div class="price-tag">COMPLET</div>
+        <div class="plan-name">Premium</div>
+        <div class="plan-tagline">Le contrôle total</div>
+        <div class="plan-price"><span class="amt">200€</span><span class="per">/mois</span></div>
+        <div class="plan-sub">Facturé mensuellement · résiliable à tout moment</div>
+        <ul class="plan-feats">
+          <li><span class="chk yes">✓</span> <strong>Tout l'Essentiel</strong>, inclus</li>
+          <li><span class="chk yes">✓</span> Groupe <strong>Livreur</strong> dédié</li>
+          <li><span class="chk yes">✓</span> <strong>Tableau de bord admin</strong> · code secret privé</li>
+          <li><span class="chk yes">✓</span> Statistiques & CA en temps réel</li>
+          <li><span class="chk yes">✓</span> <strong>Espace livreur</strong> complet (agenda, calendrier)</li>
+          <li><span class="chk yes">✓</span> Données 100% cloisonnées</li>
+          <li><span class="chk yes">✓</span> Support prioritaire</li>
+        </ul>
+        <a href="#contact" class="btn btn-primary" data-plan="premium">Choisir Premium</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROCESS -->
+<section class="how" id="process">
+  <div class="container">
+    <div class="shead reveal">
+      <span class="tag">Déploiement</span>
+      <h2>Opérationnel en 24h</h2>
+      <p>Vous choisissez, on déploie, vous pilotez.</p>
+    </div>
+    <div class="steps">
+      <div class="step reveal d1"><div class="n">1</div><h4>Souscription</h4><p>Choisissez votre formule et réglez en ligne. Paiement sécurisé.</p></div>
+      <div class="step reveal d1"><div class="n">2</div><h4>Déploiement</h4><p>Votre bot est créé et configuré avec vos groupes en quelques heures.</p></div>
+      <div class="step reveal d2"><div class="n">3</div><h4>Vos accès</h4><p>Bot, groupes, tableaux de bord et codes privés livrés clés en main.</p></div>
+      <div class="step reveal d2"><div class="n">4</div><h4>En route</h4><p>Les commandes arrivent, l'équipe s'organise, vous suivez tout en direct.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta" id="contact">
+  <div class="container">
+    <div class="cta-box reveal">
+      <h2>Prêt à automatiser votre boutique ?</h2>
+      <p>Déployez votre bot Telegram dédié et reprenez le contrôle de vos commandes.</p>
+      <a href="#tarifs" class="btn btn-primary" style="padding:14px 32px;font-size:15px">Démarrer maintenant</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container foot-in">
+    <a href="#" class="logo"><span class="logo-mark">🐙</span>La&nbsp;Pieuvre</a>
+    <div class="foot-links">
+      <a href="#fonctionnalites">Fonctionnalités</a>
+      <a href="#tarifs">Tarifs</a>
+      <a href="#process">Déploiement</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="copy">© 2026 La Pieuvre · Tous droits réservés</div>
+  </div>
+</footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ===== Nav scroll ===== */
+const nav=document.getElementById('nav');
+addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>40),{passive:true});
+
+/* ===== Reveal on scroll ===== */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.14});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+/* ===== Mini-app order feed (calm simulation) ===== */
+(function(){
+  const feed=document.getElementById('appFeed');if(!feed)return;
+  const towns=['Lille','Roubaix','Tourcoing','Wattrelos','Lambersart','Marcq','Villeneuve-d\'Ascq'];
+  const states=[['NOUVELLE','b-new'],['EN ROUTE','b-road'],['LIVRÉE','b-done']];
+  let id=1042;
+  function makeCard(stIdx){
+    const [label,cls]=states[stIdx];
+    const price=(2+Math.floor(Math.random()*7))*12;
+    const hh=String(9+Math.floor(Math.random()*12)).padStart(2,'0');
+    const mm=String(Math.floor(Math.random()*60)).padStart(2,'0');
+    const c=document.createElement('div');
+    c.className='order-card';
+    c.innerHTML=`<div class="row1"><span class="cust">Commande #${id++}</span><span class="badge ${cls}">${label}</span></div>
+      <div class="meta">📍 ${towns[Math.random()*towns.length|0]} · ${hh}:${mm}</div>
+      <div class="row1" style="margin-top:5px"><span class="meta">${1+Math.floor(Math.random()*3)} articles</span><span class="price">${price}€</span></div>`;
+    return c;
+  }
+  // seed
+  [2,1,0].forEach(i=>feed.appendChild(makeCard(i)));
+  setInterval(()=>{
+    if(document.hidden)return;
+    feed.insertBefore(makeCard(0),feed.firstChild);
+    while(feed.children.length>3)feed.removeChild(feed.lastChild);
+  },4200);
+})();
+
+/* ===== 3D octopus ===== */
+(function(){
+  const canvas=document.getElementById('bg-canvas');
+  if(!window.THREE){canvas.style.display='none';return;}
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,1,2000);
+  camera.position.set(0,40,420);
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
+  renderer.setSize(innerWidth,innerHeight);
+
+  const group=new THREE.Group();
+  scene.add(group);
+
+  // soft round sprite
+  const cv=document.createElement('canvas');cv.width=cv.height=64;
+  const cx=cv.getContext('2d');
+  const g=cx.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.35,'rgba(255,255,255,.5)');g.addColorStop(1,'rgba(255,255,255,0)');
+  cx.fillStyle=g;cx.fillRect(0,0,64,64);
+  const tex=new THREE.CanvasTexture(cv);
+
+  // 8 tentacles
+  const ARMS=8, SEG=58, COUNT=ARMS*SEG;
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(COUNT*3);
+  const col=new Float32Array(COUNT*3);
+  const cHead=new THREE.Color(0x4ee7d6), cTip=new THREE.Color(0x0d3540), tmp=new THREE.Color();
+  for(let a=0,idx=0;a<ARMS;a++){
+    for(let s=0;s<SEG;s++,idx++){
+      const d=s/(SEG-1);
+      tmp.copy(cHead).lerp(cTip,Math.pow(d,.8));
+      col[idx*3]=tmp.r;col[idx*3+1]=tmp.g;col[idx*3+2]=tmp.b;
+    }
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const mat=new THREE.PointsMaterial({size:4.6,map:tex,vertexColors:true,transparent:true,opacity:.72,depthWrite:false,blending:THREE.AdditiveBlending});
+  group.add(new THREE.Points(geo,mat));
+
+  // head + halo
+  const head=new THREE.Mesh(new THREE.SphereGeometry(30,28,28),new THREE.MeshBasicMaterial({color:0x3ad3c4,transparent:true,opacity:.14}));
+  head.position.y=74;group.add(head);
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(46,28,28),new THREE.MeshBasicMaterial({color:0x3ad3c4,transparent:true,opacity:.045}));
+  halo.position.y=74;group.add(halo);
+
+  let mx=0,my=0,tx=0,ty=0,scrollN=0;
+  addEventListener('mousemove',e=>{mx=e.clientX/innerWidth-.5;my=e.clientY/innerHeight-.5},{passive:true});
+  addEventListener('scroll',()=>{scrollN=scrollY/innerHeight},{passive:true});
+  addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+  let t=0;
+  (function frame(){
+    requestAnimationFrame(frame);
+    if(document.hidden)return;
+    t+=0.01;
+    for(let a=0,idx=0;a<ARMS;a++){
+      const base=a*(Math.PI*2/ARMS);
+      for(let s=0;s<SEG;s++,idx++){
+        const d=s/(SEG-1);
+        const reach=d*235;
+        const ang=base+Math.sin(t*1.05+d*4+a*0.8)*0.5*d;
+        pos[idx*3]=Math.cos(ang)*reach;
+        pos[idx*3+1]=74-d*215+Math.sin(t*1.35+d*5+a)*27*d;
+        pos[idx*3+2]=Math.sin(ang)*reach;
+      }
+    }
+    geo.attributes.position.needsUpdate=true;
+    tx+=(mx*0.4-tx)*0.04;ty+=(my*0.3-ty)*0.04;
+    group.rotation.y+=0.0015;
+    group.rotation.z=tx*0.28;
+    camera.position.x=tx*120;
+    camera.position.y=40-ty*80-scrollN*28;
+    camera.lookAt(0,28,0);
+    renderer.render(scene,camera);
+  })();
+})();
+
+/* ===== Plan select (Stripe — phase 2) ===== */
+document.querySelectorAll('[data-plan]').forEach(b=>b.addEventListener('click',()=>{
+  console.log('Plan sélectionné:',b.dataset.plan);
+}));
+</script>
+</body>
+</html>
