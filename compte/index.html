@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>La Pieuvre — Espace client</title>
+<meta name="theme-color" content="#05080e">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05070e; --ink:#eef2f9; --muted:#8b94a8;
+  --line:rgba(255,255,255,.09); --glass:rgba(255,255,255,.045); --glass2:rgba(255,255,255,.07);
+  --teal:#3ee0d0; --blue:#5fb8ff; --violet:#9a7bff;
+  --grad:linear-gradient(135deg,#3ee0d0,#5fb8ff 55%,#9a7bff);
+  --glow:rgba(62,224,208,.55);
+  --err:#ff7a7a; --shadow:0 24px 60px -28px rgba(0,0,0,.7);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Sora',sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;
+  overflow-x:hidden;line-height:1.6}
+.mono{font-family:'Space Grotesk',monospace}
+button,input{font-family:inherit}
+a{color:var(--teal);text-decoration:none}
+
+/* ===== Animated aurora background ===== */
+.aurora{position:fixed;inset:-20%;z-index:0;filter:blur(70px);opacity:.55;pointer-events:none}
+.aurora b{position:absolute;border-radius:50%;display:block;mix-blend-mode:screen}
+.aurora .a1{width:46vw;height:46vw;background:#1bbfb0;top:-6%;left:-8%;animation:drift1 18s ease-in-out infinite}
+.aurora .a2{width:42vw;height:42vw;background:#3f78ff;bottom:-10%;right:-6%;animation:drift2 22s ease-in-out infinite}
+.aurora .a3{width:34vw;height:34vw;background:#7b53ff;top:40%;left:35%;animation:drift3 26s ease-in-out infinite}
+@keyframes drift1{50%{transform:translate(8vw,10vh) scale(1.15)}}
+@keyframes drift2{50%{transform:translate(-7vw,-8vh) scale(1.1)}}
+@keyframes drift3{50%{transform:translate(-5vw,6vh) scale(1.2)}}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.5;
+  background:radial-gradient(ellipse 70% 60% at 50% 30%,transparent 40%,rgba(5,7,14,.85) 100%)}
+
+/* ===== App frame (mobile-first, centered) ===== */
+.app{position:relative;z-index:2;max-width:480px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+
+/* ===== App bar ===== */
+.appbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px;backdrop-filter:blur(14px);background:linear-gradient(180deg,rgba(5,7,14,.85),rgba(5,7,14,.4));
+  border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px}
+.brand .m{font-size:19px;filter:drop-shadow(0 0 8px var(--glow))}
+.burger{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--glass);
+  display:none;flex-direction:column;gap:4px;align-items:center;justify-content:center;cursor:pointer;transition:.2s}
+.burger:active{transform:scale(.94)}
+.burger span{width:17px;height:2px;background:var(--ink);border-radius:2px;transition:.3s}
+.burger.show{display:flex}
+
+/* ===== Drawer ===== */
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(2,4,9,.6);backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:.3s}
+.scrim.open{opacity:1;visibility:visible}
+.drawer{position:fixed;top:0;right:0;z-index:50;height:100dvh;width:min(82vw,330px);
+  background:linear-gradient(180deg,#0a0e18,#070a12);border-left:1px solid var(--line);
+  transform:translateX(105%);transition:transform .42s cubic-bezier(.16,1,.3,1);padding:22px 18px;display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer .dh{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin:6px 4px 18px}
+.drawer .dx{position:absolute;top:18px;right:16px;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);
+  background:var(--glass);color:var(--ink);font-size:18px;cursor:pointer}
+.dnav{display:flex;flex-direction:column;gap:8px}
+.dnav a{display:flex;align-items:center;gap:14px;padding:14px 14px;border-radius:14px;background:var(--glass);
+  border:1px solid var(--line);font-size:15px;font-weight:500;color:var(--ink);transition:.2s}
+.dnav a .di{width:34px;height:34px;border-radius:10px;background:rgba(62,224,208,.12);border:1px solid rgba(62,224,208,.22);
+  display:grid;place-items:center;font-size:16px;flex-shrink:0}
+.dnav a:active{transform:scale(.98)}
+.dnav a:hover{background:var(--glass2);border-color:rgba(62,224,208,.3)}
+.dnav a.danger{color:var(--err)}
+.dnav a.danger .di{background:rgba(255,122,122,.1);border-color:rgba(255,122,122,.25)}
+.drawer .dfoot{margin-top:auto;font-size:12px;color:var(--muted);text-align:center;padding-top:16px}
+
+/* ===== Main / views ===== */
+main{flex:1;padding:26px 20px calc(40px + env(safe-area-inset-bottom))}
+.view{display:none}
+.view.active{display:block;animation:slideup .45s cubic-bezier(.16,1,.3,1)}
+@keyframes slideup{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+/* glass card */
+.card{background:var(--glass);border:1px solid var(--line);border-radius:22px;padding:26px;backdrop-filter:blur(12px);box-shadow:var(--shadow)}
+h1{font-size:26px;font-weight:700;letter-spacing:-.6px;line-height:1.15}
+.lead{color:var(--muted);font-size:14.5px;font-weight:300;margin-top:8px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:11.5px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--teal);font-weight:600;margin-bottom:14px}
+.eyebrow::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal)}
+
+label{display:block;font-size:12.5px;color:var(--muted);margin:0 0 7px 3px;font-weight:500}
+input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:13px;
+  padding:14px 15px;color:var(--ink);font-size:16px;margin-bottom:15px;transition:.2s}
+input:focus{outline:none;border-color:var(--teal);background:rgba(62,224,208,.06);box-shadow:0 0 0 3px rgba(62,224,208,.1)}
+
+.btn{position:relative;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;
+  padding:15px 20px;border-radius:14px;font-weight:600;font-size:15.5px;border:none;cursor:pointer;
+  transition:transform .2s,box-shadow .25s;overflow:hidden}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--grad);color:#04121a;box-shadow:0 10px 30px -10px var(--glow)}
+.btn-primary:hover{box-shadow:0 16px 40px -12px var(--glow)}
+.btn-primary::after{content:'';position:absolute;top:0;left:-120%;width:60%;height:100%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);animation:sheen 4.5s ease-in-out infinite}
+@keyframes sheen{0%,60%{left:-120%}80%,100%{left:130%}}
+.btn-ghost{background:var(--glass);border:1px solid var(--line);color:var(--ink)}
+.btn-ghost:hover{background:var(--glass2)}
+.btn-block{margin-top:4px}
+
+.msg{font-size:13px;padding:11px 14px;border-radius:11px;margin-bottom:15px;display:none}
+.msg.show{display:block;animation:slideup .3s}
+.msg.err{background:rgba(255,122,122,.1);color:var(--err);border:1px solid rgba(255,122,122,.25)}
+.msg.ok{background:rgba(62,224,208,.1);color:var(--teal);border:1px solid rgba(62,224,208,.25)}
+.switch{text-align:center;margin-top:18px;font-size:13.5px;color:var(--muted)}
+.switch button{background:none;border:none;color:var(--teal);font-weight:600;font-size:13.5px;cursor:pointer}
+
+/* plan recap pill */
+.recap{display:flex;align-items:center;justify-content:space-between;background:var(--glass);border:1px solid var(--line);
+  border-radius:16px;padding:16px 18px;margin-bottom:18px}
+.recap .pn{font-weight:600;font-size:15px}.recap .pp{font-family:'Space Grotesk';font-weight:700;font-size:20px}
+.recap .pp small{font-size:12px;color:var(--muted);font-weight:400}
+.promo-row{display:flex;gap:10px;margin-bottom:8px}
+.promo-row input{margin:0;text-transform:uppercase}
+.promo-row .btn{width:auto;padding:14px 16px;font-size:14px}
+
+/* ===== Octopus (waiting) ===== */
+.octo-stage{display:flex;justify-content:center;margin:6px 0 4px}
+.octo{font-size:84px;line-height:1;animation:bob 3s ease-in-out infinite;filter:drop-shadow(0 12px 30px var(--glow))}
+@keyframes bob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-14px) rotate(4deg)}}
+.ring{position:relative;width:120px;height:120px;margin:0 auto}
+.ring i{position:absolute;inset:0;border-radius:50%;border:2px solid rgba(62,224,208,.25);animation:ripple 2.6s ease-out infinite}
+.ring i:nth-child(2){animation-delay:1.3s}
+@keyframes ripple{0%{transform:scale(.5);opacity:.8}100%{transform:scale(1.6);opacity:0}}
+
+/* timeline */
+.timeline{margin-top:24px;display:flex;flex-direction:column;gap:2px}
+.tl{display:flex;gap:14px;align-items:flex-start;padding:6px 0}
+.tl .dot{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;font-size:12px;font-weight:700;
+  border:2px solid var(--line);color:var(--muted);background:var(--bg);position:relative}
+.tl.done .dot{border-color:var(--teal);background:rgba(62,224,208,.15);color:var(--teal)}
+.tl.cur .dot{border-color:var(--teal);background:var(--grad);color:#04121a;animation:pulse 1.6s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(62,224,208,.12)}}
+.tl .tt{font-size:14px;font-weight:500}.tl .td{font-size:12.5px;color:var(--muted)}
+.tl:not(:last-child) .dot::after{content:'';position:absolute;top:26px;left:50%;transform:translateX(-50%);width:2px;height:22px;background:var(--line)}
+.tl.done:not(:last-child) .dot::after{background:var(--teal)}
+
+/* ===== Dashboard ===== */
+.hello{margin-bottom:20px}
+.hello .hi{font-size:13px;color:var(--teal);font-weight:600;letter-spacing:.5px}
+.hello h1{margin-top:3px}
+.badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;padding:6px 13px;border-radius:100px;
+  border:1px solid rgba(62,224,208,.3);color:var(--teal);background:rgba(62,224,208,.08);margin-top:10px}
+.badge .d{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 7px var(--teal)}
+.thanks{background:linear-gradient(135deg,rgba(62,224,208,.1),rgba(154,123,255,.08));border:1px solid var(--line);
+  border-radius:18px;padding:18px 20px;margin-bottom:18px;font-size:14px;color:#cdd5e6}
+.thanks b{color:var(--ink)}
+.sec-label{font-size:11.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-weight:600;margin:26px 4px 12px}
+.acc{display:flex;gap:14px;align-items:center;background:var(--glass);border:1px solid var(--line);border-radius:16px;
+  padding:16px;margin-bottom:11px;transition:.2s}
+.acc:active{transform:scale(.99)}
+.acc:hover{background:var(--glass2);border-color:rgba(62,224,208,.25)}
+.acc .ic{width:44px;height:44px;border-radius:13px;background:rgba(62,224,208,.1);border:1px solid rgba(62,224,208,.2);
+  display:grid;place-items:center;font-size:20px;flex-shrink:0}
+.acc .t{font-size:15px;font-weight:600}.acc .d{font-size:12px;color:var(--muted);word-break:break-all}
+.acc .go{margin-left:auto;font-size:19px;color:var(--teal);flex-shrink:0}
+.acc.locked{opacity:.5}.acc.locked .go{color:var(--muted)}
+
+/* ===== Tutorial carousel ===== */
+.tuto-head{text-align:center;margin-bottom:18px}
+.carousel{overflow:hidden;border-radius:22px}
+.track{display:flex;transition:transform .45s cubic-bezier(.16,1,.3,1)}
+.slide{min-width:100%;padding:4px}
+.slide .card{text-align:center;min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.slide .stepno{font-family:'Space Grotesk';font-size:12px;font-weight:700;color:var(--teal);letter-spacing:1px}
+.slide h2{font-size:19px;font-weight:700;margin:6px 0 4px}
+.slide p{font-size:13.5px;color:var(--muted);max-width:280px}
+/* mini phone illustration */
+.mini{width:150px;height:300px;border-radius:26px;background:linear-gradient(160deg,#0d1320,#080c14);border:1px solid var(--line);
+  margin:18px auto 0;padding:9px;position:relative;box-shadow:0 20px 40px -22px rgba(0,0,0,.8)}
+.mini .scr{width:100%;height:100%;border-radius:19px;background:#0a0f18;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.mini .urlbar{margin:auto 10px;background:rgba(255,255,255,.08);border-radius:9px;padding:7px 10px;font-size:9px;color:var(--muted);text-align:center}
+.mini .safari{margin-top:auto;display:flex;justify-content:space-around;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:13px}
+.mini .safari .hl{color:var(--teal);transform:scale(1.35);filter:drop-shadow(0 0 6px var(--glow))}
+.sheet{position:absolute;left:6px;right:6px;bottom:6px;background:#11192a;border:1px solid var(--line);border-radius:14px;padding:9px;
+  animation:rise .5s cubic-bezier(.16,1,.3,1)}
+@keyframes rise{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.sheet .row{display:flex;align-items:center;gap:8px;font-size:9.5px;padding:7px 6px;border-radius:8px;color:#cdd5e6}
+.sheet .row.hl{background:rgba(62,224,208,.14);color:var(--teal);font-weight:600}
+.sheet .row .e{font-size:13px}
+.addbox{position:absolute;inset:0;background:rgba(5,8,14,.7);display:grid;place-items:center}
+.addbox .dlg{background:#121a2b;border:1px solid var(--line);border-radius:13px;width:88%;padding:11px;font-size:9px}
+.addbox .dlg .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+.addbox .dlg .add{color:var(--teal);font-weight:700;font-size:11px}
+.addbox .dlg .ico{display:flex;align-items:center;gap:7px}
+.addbox .dlg .ico .ic{width:26px;height:26px;border-radius:7px;background:var(--grad);display:grid;place-items:center;color:#04121a;font-weight:800;font-size:9px}
+.home{flex:1;padding:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:flex-start}
+.home .ig{aspect-ratio:1;border-radius:11px;background:rgba(255,255,255,.05)}
+.home .ig.cdl{background:var(--grad);box-shadow:0 0 18px var(--glow);display:grid;place-items:center;color:#04121a;font-weight:800;font-size:9px;animation:pop .5s .2s backwards}
+@keyframes pop{from{transform:scale(0)}to{transform:scale(1)}}
+.dots{display:flex;justify-content:center;gap:7px;margin:18px 0}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line);transition:.3s}
+.dots i.on{width:22px;border-radius:4px;background:var(--grad)}
+.carnav{display:flex;gap:12px;margin-top:4px}
+
+.note{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:30px}
+
+/* confetti canvas */
+#confetti{position:fixed;inset:0;z-index:60;pointer-events:none}
+
+@media(min-width:600px){ .card{padding:30px} }
+</style>
+</head>
+<body>
+
+<div class="aurora"><b class="a1"></b><b class="a2"></b><b class="a3"></b></div>
+<div class="grain"></div>
+<canvas id="confetti"></canvas>
+
+<div class="app">
+  <div class="appbar">
+    <a href="../index.html" class="brand"><span class="m">🐙</span>La&nbsp;Pieuvre</a>
+    <button class="burger" id="burger" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+
+  <main>
+    <!-- AUTH -->
+    <section class="view" id="v-auth">
+      <div class="eyebrow">Espace client</div>
+      <h1 id="auth-title">Créer votre compte</h1>
+      <p class="lead" id="auth-sub">Quelques secondes, et on déploie votre bot.</p>
+      <div class="card" style="margin-top:22px">
+        <div class="msg" id="auth-msg"></div>
+        <div id="name-field">
+          <label>Nom de votre boutique</label>
+          <input id="i-name" type="text" placeholder="Ma boutique" autocomplete="organization">
+        </div>
+        <label>Email</label>
+        <input id="i-email" type="email" placeholder="vous@exemple.com" autocomplete="email">
+        <label>Mot de passe</label>
+        <input id="i-pass" type="password" placeholder="••••••••" autocomplete="current-password">
+        <button class="btn btn-primary btn-block" id="auth-go">Continuer</button>
+        <div class="switch" id="auth-switch-wrap">Déjà client ? <button id="auth-switch">Se connecter</button></div>
+      </div>
+    </section>
+
+    <!-- CHECKOUT -->
+    <section class="view" id="v-pay">
+      <div class="eyebrow">Étape finale</div>
+      <h1>Finalisons votre abonnement</h1>
+      <p class="lead">Paiement sécurisé par Stripe. Sans engagement, résiliable à tout moment.</p>
+      <div class="card" style="margin-top:22px">
+        <div class="recap">
+          <div><div class="pn" id="pay-plan">Premium</div><div class="lead" style="margin:0" id="pay-tag">Le contrôle total</div></div>
+          <div class="pp" id="pay-price">200€<small>/mois</small></div>
+        </div>
+        <button class="btn btn-primary btn-block" id="pay-go" style="margin-top:6px">🔒 Payer avec Stripe</button>
+        <p class="note">Paiement 100% sécurisé. Un code promo ? Vous pourrez le saisir directement sur la page Stripe.</p>
+      </div>
+    </section>
+
+    <!-- WAITING -->
+    <section class="view" id="v-wait">
+      <div class="card" style="text-align:center">
+        <div class="ring"><i></i><i></i></div>
+        <div class="octo-stage" style="margin-top:-104px"><div class="octo">🐙</div></div>
+        <h1 style="margin-top:14px">Merci <span id="wait-name">!</span> 🎉</h1>
+        <p class="lead">Votre paiement est confirmé. <b style="color:var(--ink)">Nous préparons votre bot</b> sur-mesure — création des groupes, configuration, tableaux de bord.</p>
+        <div class="timeline">
+          <div class="tl done"><div class="dot">✓</div><div><div class="tt">Paiement reçu</div><div class="td">Votre abonnement est actif</div></div></div>
+          <div class="tl done"><div class="dot">✓</div><div><div class="tt">Compte créé</div><div class="td">Votre espace est prêt</div></div></div>
+          <div class="tl cur"><div class="dot">3</div><div><div class="tt">Déploiement de votre bot</div><div class="td">Notre équipe le configure en ce moment</div></div></div>
+          <div class="tl"><div class="dot">4</div><div><div class="tt">Accès livrés</div><div class="td">Bot, groupes & tableaux de bord</div></div></div>
+        </div>
+        <p class="note">📩 Vous recevrez un email dès que votre bot est prêt. Vous pouvez fermer cette page en toute sécurité.</p>
+        <button class="btn btn-ghost" id="demo-deploy" style="margin-top:18px;font-size:13px;opacity:.7">▸ Aperçu démo : simuler la livraison</button>
+      </div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section class="view" id="v-dash">
+      <div class="hello">
+        <div class="hi" id="dash-hi">Bonjour 👋</div>
+        <h1>Votre espace</h1>
+        <span class="badge"><span class="d"></span><span id="dash-plan">Premium · actif</span></span>
+      </div>
+
+      <div class="thanks">🐙 <b>Merci de votre confiance.</b> Votre bot est en ligne. Tout est prêt — voici vos accès.</div>
+
+      <div class="card" id="secret-card" style="margin-bottom:8px">
+        <div class="eyebrow">À configurer</div>
+        <h1 style="font-size:19px">Votre code secret admin</h1>
+        <p class="lead" style="margin-bottom:16px">Il protège votre tableau de bord. Choisissez-le et notez-le.</p>
+        <div class="msg" id="secret-msg"></div>
+        <input id="i-secret" type="text" placeholder="ex : MaBoutique-2026">
+        <button class="btn btn-primary btn-block" id="secret-go">Enregistrer</button>
+      </div>
+
+      <div class="sec-label">Vos accès</div>
+      <div id="access-list"></div>
+
+      <button class="btn btn-ghost" id="open-tuto" style="margin-top:18px">📲 Installer l'app sur mon téléphone</button>
+      <p class="foot">Besoin d'aide ? On s'occupe de tout — écrivez-nous.</p>
+    </section>
+
+    <!-- TUTORIAL -->
+    <section class="view" id="v-tuto">
+      <div class="tuto-head">
+        <div class="eyebrow" style="justify-content:center">Tutoriel · iOS</div>
+        <h1>Ajoutez l'app à votre écran d'accueil</h1>
+        <p class="lead">5 étapes, 30 secondes. Suivez le guide 👇</p>
+      </div>
+      <div class="carousel">
+        <div class="track" id="track">
+          <!-- slide 1 -->
+          <div class="slide"><div class="card">
+            <div class="stepno">ÉTAPE 1 / 5</div><h2>Ouvrez dans Safari</h2>
+            <p>Ouvrez le lien de votre tableau de bord dans <b style="color:var(--ink)">Safari</b> (pas Chrome).</p>
+            <div class="mini"><div class="scr">
+              <div class="urlbar">🔒 cdl59.github.io/…/admin</div>
+              <div class="safari"><span>‹</span><span>›</span><span class="hl">⬆️</span><span>▢</span></div>
+            </div></div>
+          </div></div>
+          <!-- slide 2 -->
+          <div class="slide"><div class="card">
+            <div class="stepno">ÉTAPE 2 / 5</div><h2>Touchez « Partager »</h2>
+            <p>Appuyez sur l'icône <b style="color:var(--ink)">Partager</b> (le carré avec une flèche) en bas de l'écran.</p>
+            <div class="mini"><div class="scr">
+              <div class="urlbar">🔒 cdl59.github.io/…/admin</div>
+              <div class="sheet" style="bottom:auto;top:40px">
+                <div class="row"><span class="e">✉️</span> Messages</div>
+                <div class="row"><span class="e">📋</span> Copier</div>
+              </div>
+              <div class="safari"><span>‹</span><span>›</span><span class="hl">⬆️</span><span>▢</span></div>
+            </div></div>
+          </div></div>
+          <!-- slide 3 -->
+          <div class="slide"><div class="card">
+            <div class="stepno">ÉTAPE 3 / 5</div><h2>« Sur l'écran d'accueil »</h2>
+            <p>Faites défiler et touchez <b style="color:var(--ink)">« Sur l'écran d'accueil »</b>.</p>
+            <div class="mini"><div class="scr">
+              <div class="sheet" style="top:50px;bottom:auto">
+                <div class="row"><span class="e">⭐</span> Favoris</div>
+                <div class="row"><span class="e">🔖</span> Signet</div>
+                <div class="row hl"><span class="e">➕</span> Sur l'écran d'accueil</div>
+              </div>
+            </div></div>
+          </div></div>
+          <!-- slide 4 -->
+          <div class="slide"><div class="card">
+            <div class="stepno">ÉTAPE 4 / 5</div><h2>Touchez « Ajouter »</h2>
+            <p>Confirmez en touchant <b style="color:var(--ink)">« Ajouter »</b> en haut à droite.</p>
+            <div class="mini"><div class="scr">
+              <div class="addbox"><div class="dlg">
+                <div class="top"><span>Annuler</span><b>Sur l'écran d'accueil</b><span class="add">Ajouter</span></div>
+                <div class="ico"><span class="ic">CDL</span><span>Mon tableau de bord</span></div>
+              </div></div>
+            </div></div>
+          </div></div>
+          <!-- slide 5 -->
+          <div class="slide"><div class="card">
+            <div class="stepno">ÉTAPE 5 / 5</div><h2>C'est prêt ! 🎉</h2>
+            <p>L'icône CDL est sur votre écran d'accueil. Elle s'ouvre en plein écran, comme une vraie app.</p>
+            <div class="mini"><div class="scr">
+              <div class="home"><div class="ig"></div><div class="ig"></div><div class="ig cdl">CDL</div><div class="ig"></div><div class="ig"></div><div class="ig"></div><div class="ig"></div><div class="ig"></div></div>
+            </div></div>
+          </div></div>
+        </div>
+      </div>
+      <div class="dots" id="dots"></div>
+      <div class="carnav">
+        <button class="btn btn-ghost" id="tuto-prev">← Précédent</button>
+        <button class="btn btn-primary" id="tuto-next">Suivant →</button>
+      </div>
+      <p class="note">Sur Android : ouvrez le lien dans Chrome → menu ⋮ → « Ajouter à l'écran d'accueil ».</p>
+    </section>
+  </main>
+</div>
+
+<!-- Drawer -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer">
+  <button class="dx" id="drawer-x">✕</button>
+  <div class="dh">Où souhaitez-vous aller ?</div>
+  <nav class="dnav" id="dnav"></nav>
+  <div class="dfoot">La Pieuvre · CDL</div>
+</aside>
+
+<script>
+/* ============================================================
+   ESPACE CLIENT — La Pieuvre  (branché backend réel)
+   ============================================================ */
+const API='https://lapieuvre-backend-production.up.railway.app';
+const PLANS={
+  essentiel:{name:'Essentiel',tag:'Le moteur de commandes',price:100,admin:false,driver:false},
+  premium:  {name:'Premium',  tag:'Le contrôle total',    price:200,admin:true, driver:true},
+};
+const $=s=>document.querySelector(s);
+let signupMode=true, selectedPlan='premium', slide=0, _pollTimer=null;
+
+function param(k){return new URLSearchParams(location.search).get(k);}
+function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));$('#'+id).classList.add('active');window.scrollTo(0,0);}
+function flash(el,t,c){el.textContent=t;el.className='msg show '+c;}
+function getToken(){return localStorage.getItem('lp_token');}
+function setToken(t){localStorage.setItem('lp_token',t);}
+function clearToken(){localStorage.removeItem('lp_token');}
+
+async function api(method,path,body){
+  const h={'Content-Type':'application/json'};
+  const tok=getToken(); if(tok)h['Authorization']='Bearer '+tok;
+  const r=await fetch(API+path,{method,headers:h,body:body?JSON.stringify(body):undefined});
+  return r.json();
+}
+
+/* ---------- Drawer ---------- */
+function buildDrawer(acc){
+  const plan=acc&&PLANS[acc.plan];const b=acc&&acc.bot||{};
+  const items=[
+    {ic:'🏠',t:'Mes accès',act:()=>show('v-dash')},
+    {ic:'📲',t:'Installer l\'app (tuto)',act:()=>{slide=0;renderCarousel();show('v-tuto');}},
+  ];
+  if(b.botUrl)items.push({ic:'🤖',t:'Ouvrir mon bot',href:b.botUrl});
+  if(plan&&plan.admin&&acc.has_secret)items.push({ic:'📊',t:'Tableau de bord admin',href:b.adminUrl});
+  items.push({ic:'💬',t:'Aide & contact',href:'https://t.me/'});
+  items.push({ic:'⎋',t:'Déconnexion',danger:true,act:()=>{clearToken();location.reload();}});
+  $('#dnav').innerHTML=items.map((it,i)=>
+    `<a data-i="${i}" ${it.href?`href="${it.href}" target="_blank" rel="noopener"`:''} class="${it.danger?'danger':''}"><span class="di">${it.ic}</span>${it.t}</a>`).join('');
+  $('#dnav').querySelectorAll('a').forEach((el,i)=>{const it=items[i];el.addEventListener('click',()=>{closeDrawer();if(it.act)it.act();});});
+}
+function openDrawer(){$('#drawer').classList.add('open');$('#scrim').classList.add('open');}
+function closeDrawer(){$('#drawer').classList.remove('open');$('#scrim').classList.remove('open');}
+$('#burger').onclick=openDrawer;$('#drawer-x').onclick=closeDrawer;$('#scrim').onclick=closeDrawer;
+
+/* ---------- Auth ---------- */
+function setAuthMode(s){
+  signupMode=s;
+  $('#auth-title').textContent=s?'Créer votre compte':'Bon retour 👋';
+  $('#auth-sub').textContent=s?'Quelques secondes, et on déploie votre bot.':'Connectez-vous à votre espace.';
+  $('#auth-go').textContent=s?'Continuer':'Se connecter';
+  $('#name-field').style.display=s?'block':'none';
+  $('#auth-switch-wrap').innerHTML=s
+    ?`Déjà client ? <button id="auth-switch">Se connecter</button>`
+    :`Pas encore de compte ? <button id="auth-switch">Créer un compte</button>`;
+  $('#auth-switch').onclick=()=>setAuthMode(!signupMode);
+}
+$('#auth-go').onclick=async()=>{
+  const email=$('#i-email').value.trim().toLowerCase(),
+        pass=$('#i-pass').value,
+        name=$('#i-name').value.trim(),
+        m=$('#auth-msg'),
+        btn=$('#auth-go');
+  if(!email.includes('@'))return flash(m,'Email invalide.','err');
+  if(pass.length<6)return flash(m,'Mot de passe : 6 caractères minimum.','err');
+  if(signupMode&&!name)return flash(m,'Indiquez le nom de votre boutique.','err');
+  btn.disabled=true; btn.textContent='…';
+  const path=signupMode?'/api/signup':'/api/login';
+  const body=signupMode?{email,password:pass,name,plan:selectedPlan}:{email,password:pass};
+  const d=await api('POST',path,body).catch(()=>null);
+  btn.disabled=false; btn.textContent=signupMode?'Continuer':'Se connecter';
+  if(!d||d.error){
+    const msgs={email_invalide:'Email invalide.',mdp_court:'Mot de passe trop court.',
+                 email_existe:'Email déjà utilisé.',identifiants:'Email ou mot de passe incorrect.'};
+    return flash(m,msgs[d&&d.error]||'Erreur réseau, réessaie.','err');
+  }
+  setToken(d.token);
+  routeAccount(d.account);
+};
+
+/* ---------- Checkout ---------- */
+function goPay(acc){
+  selectedPlan=acc.plan||selectedPlan;
+  const p=PLANS[selectedPlan]||PLANS.premium;
+  $('#pay-plan').textContent=p.name;$('#pay-tag').textContent=p.tag;
+  $('#pay-price').innerHTML=p.price+'€<small>/mois</small>';
+  show('v-pay');
+}
+$('#pay-go').onclick=async()=>{
+  const btn=$('#pay-go');btn.disabled=true;btn.textContent='Redirection…';
+  const d=await api('POST','/api/checkout').catch(()=>null);
+  btn.disabled=false;btn.textContent='🔒 Payer avec Stripe';
+  if(d&&d.checkout_url){location.href=d.checkout_url;}
+  else flash($('#auth-msg')||document.body,'Erreur de paiement, réessaie.','err');
+};
+
+/* ---------- Waiting ---------- */
+function goWait(acc){
+  $('#wait-name').textContent=(acc.name||'').split(' ')[0]||'!';
+  show('v-wait');
+  stopPoll();
+  _pollTimer=setInterval(async()=>{
+    const d=await api('GET','/api/me').catch(()=>null);
+    if(d&&d.account&&d.account.state==='active'){stopPoll();confetti();renderDash(d.account);show('v-dash');$('#burger').classList.add('show');}
+  },5000);
+}
+function stopPoll(){if(_pollTimer){clearInterval(_pollTimer);_pollTimer=null;}}
+
+/* ---------- Dashboard ---------- */
+function renderDash(acc){
+  if(!acc)return;
+  buildDrawer(acc);
+  const plan=PLANS[acc.plan]||PLANS.premium;
+  const b=acc.bot||{};
+  $('#dash-hi').textContent='Bonjour '+((acc.name||'').split(' ')[0]||'')+' 👋';
+  $('#dash-plan').textContent=plan.name+' · actif';
+  $('#secret-card').style.display=acc.has_secret?'none':'block';
+  const items=[
+    {ic:'🤖',t:'Votre bot Telegram',d:b.username||'—',url:b.botUrl,on:!!b.botUrl},
+    {ic:'📦',t:'Groupe Livraison',d:'Notifications de commandes',url:b.grpLivraison,on:!!b.grpLivraison},
+    {ic:'🏪',t:'Groupe Sur place',d:'Notifications sur place',url:b.grpSurPlace,on:!!b.grpSurPlace},
+  ];
+  if(plan.driver)items.push({ic:'🛵',t:'Groupe Livreur',d:'Coordination des livreurs',url:b.grpLivreur,on:!!b.grpLivreur});
+  if(plan.admin)items.push({ic:'📊',t:'Tableau de bord admin',d:acc.has_secret?b.adminUrl:'Définissez d\'abord votre code secret',url:b.adminUrl,on:acc.has_secret});
+  if(plan.admin)items.push({ic:'👤',t:'Espace livreur',d:b.driverUrl||'—',url:b.driverUrl,on:!!b.driverUrl});
+  $('#access-list').innerHTML=items.map(it=>`<div class="acc ${it.on?'':'locked'}">
+    <div class="ic">${it.ic}</div><div style="min-width:0"><div class="t">${it.t}</div><div class="d">${it.d||'—'}</div></div>
+    ${it.on&&it.url?`<a class="go" href="${it.url}" target="_blank" rel="noopener">↗</a>`:'<div class="go">🔒</div>'}</div>`).join('');
+}
+$('#secret-go').onclick=async()=>{
+  const v=$('#i-secret').value.trim(),m=$('#secret-msg');
+  if(v.length<6)return flash(m,'Au moins 6 caractères.','err');
+  const d=await api('POST','/api/secret',{secret:v}).catch(()=>null);
+  if(d&&d.ok){
+    flash(m,'✓ Code enregistré. Tableau de bord débloqué.','ok');
+    const me=await api('GET','/api/me').catch(()=>null);
+    if(me&&me.account)renderDash(me.account);
+  }else{flash(m,'Erreur, réessaie.','err');}
+};
+$('#open-tuto').onclick=()=>{slide=0;renderCarousel();show('v-tuto');};
+
+/* ---------- Carousel ---------- */
+const SLIDES=5;
+function renderCarousel(){
+  $('#track').style.transform=`translateX(-${slide*100}%)`;
+  $('#dots').innerHTML=Array.from({length:SLIDES},(_,i)=>`<i class="${i===slide?'on':''}"></i>`).join('');
+  $('#tuto-prev').style.visibility=slide===0?'hidden':'visible';
+  $('#tuto-next').textContent=slide===SLIDES-1?'Terminer ✓':'Suivant →';
+}
+$('#tuto-next').onclick=()=>{if(slide<SLIDES-1){slide++;renderCarousel();}else show('v-dash');};
+$('#tuto-prev').onclick=()=>{if(slide>0){slide--;renderCarousel();}};
+let sx=0;$('#track').parentElement.addEventListener('touchstart',e=>sx=e.touches[0].clientX,{passive:true});
+$('#track').parentElement.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;
+  if(dx<-40&&slide<SLIDES-1){slide++;renderCarousel();}if(dx>40&&slide>0){slide--;renderCarousel();}});
+
+/* ---------- Confetti ---------- */
+function confetti(){
+  const cv=$('#confetti'),ctx=cv.getContext('2d');cv.width=innerWidth;cv.height=innerHeight;
+  const cols=['#3ee0d0','#5fb8ff','#9a7bff','#ffffff'];
+  const ps=Array.from({length:140},()=>({x:innerWidth/2,y:innerHeight*.35,
+    vx:(Math.random()-.5)*14,vy:Math.random()*-15-4,g:.4+Math.random()*.3,
+    s:5+Math.random()*7,c:cols[Math.random()*cols.length|0],r:Math.random()*6,vr:(Math.random()-.5)*.4}));
+  let f=0;(function loop(){f++;ctx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{p.vy+=p.g;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);ctx.fillStyle=p.c;ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6);ctx.restore();});
+    if(f<150)requestAnimationFrame(loop);else ctx.clearRect(0,0,cv.width,cv.height);})();
+}
+
+/* ---------- Router ---------- */
+function routeAccount(acc){
+  stopPoll();
+  const state=acc.state;
+  $('#burger').classList.toggle('show',state==='active');
+  if(state==='needs_payment'){goPay(acc);}
+  else if(state==='waiting_provision'){goWait(acc);}
+  else if(state==='active'){renderDash(acc);show('v-dash');}
+  else if(state==='suspended'){show('v-auth');flash($('#auth-msg'),'Abonnement suspendu. Contactez le support.','err');}
+  else{clearToken();setAuthMode(true);show('v-auth');}
+}
+
+async function route(){
+  const planParam=param('plan');if(planParam&&PLANS[planParam])selectedPlan=planParam;
+  const wantsLogin=param('login')!=null;
+  // Retour de Stripe
+  if(param('session')==='ok'){
+    const tok=getToken();
+    if(tok){const d=await api('GET','/api/me').catch(()=>null);if(d&&d.account)return routeAccount(d.account);}
+  }
+  const tok=getToken();
+  if(!tok){setAuthMode(!wantsLogin);show('v-auth');return;}
+  const d=await api('GET','/api/me').catch(()=>null);
+  if(!d||d.error==='non_authentifie'){clearToken();setAuthMode(!wantsLogin);show('v-auth');return;}
+  routeAccount(d.account);
+}
+route();
+</script>
+</body>
+</html>
