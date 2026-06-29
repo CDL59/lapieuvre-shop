@@ -97,6 +97,9 @@ input:focus{outline:none;border-color:var(--teal);background:rgba(62,224,208,.06
   transition:transform .2s,box-shadow .25s;overflow:hidden}
 .btn:active{transform:scale(.97)}
 .btn-primary{background:var(--grad);color:#04121a;box-shadow:0 10px 30px -10px var(--glow)}
+.btn-s{padding:6px 12px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:.2s}
+.btn-prim{background:var(--grad);color:#04121a}
+.btn-err{background:#f87171;color:#fff}
 .btn-primary:hover{box-shadow:0 16px 40px -12px var(--glow)}
 .btn-primary::after{content:'';position:absolute;top:0;left:-120%;width:60%;height:100%;
   background:linear-gradient(100deg,transparent,rgba(255,255,255,.45),transparent);animation:sheen 4.5s ease-in-out infinite}
@@ -299,6 +302,14 @@ input:focus{outline:none;border-color:var(--teal);background:rgba(62,224,208,.06
 
       <button class="btn btn-ghost" id="open-tuto" style="margin-top:18px">📲 Installer l'app sur mon téléphone</button>
       <p class="foot">Besoin d'aide ? On s'occupe de tout — écrivez-nous.</p>
+    </section>
+
+    <!-- PANEL PROPRIO -->
+    <section class="view" id="v-own">
+      <div class="hello"><div class="hi">Bonjour 👋</div><h1>Panel propriétaire</h1></div>
+      <div class="sec-label">Clients</div>
+      <div id="own-stats" style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap"></div>
+      <div id="own-list"></div>
     </section>
 
     <!-- TUTORIAL -->
@@ -552,11 +563,60 @@ function confetti(){
     if(f<150)requestAnimationFrame(loop);else ctx.clearRect(0,0,cv.width,cv.height);})();
 }
 
+/* ---------- Owner Panel ---------- */
+const PLAN_LABEL={essentiel:'Essentiel 100€/mois',premium:'Premium 200€/mois'};
+const STATE_LABEL={pending:'En attente',active:'Actif',suspended:'Suspendu',waiting_provision:'Config en cours'};
+
+async function renderOwner(acc){
+  const stats=$('#own-stats'),list=$('#own-list');
+  stats.innerHTML='<div style="background:var(--card);border-radius:12px;padding:12px 16px;flex:1;text-align:center"><div style="font-size:22px;font-weight:700" id="ow-total">—</div><div style="font-size:12px;color:var(--t2)">Clients total</div></div><div style="background:var(--card);border-radius:12px;padding:12px 16px;flex:1;text-align:center"><div style="font-size:22px;font-weight:700;color:#3ee0d0" id="ow-active">—</div><div style="font-size:12px;color:var(--t2)">Actifs</div></div><div style="background:var(--card);border-radius:12px;padding:12px 16px;flex:1;text-align:center"><div style="font-size:22px;font-weight:700;color:#f87171" id="ow-pend">—</div><div style="font-size:12px;color:var(--t2)">En attente</div></div>';
+  list.innerHTML='<div style="text-align:center;padding:32px;color:var(--t2)">Chargement…</div>';
+  const d=await api('GET','/api/owner/me/clients').catch(()=>null);
+  if(!d){list.innerHTML='<div style="color:var(--t2);padding:16px">Erreur de chargement.</div>';return;}
+  const clients=d.clients||[];
+  $('#ow-total').textContent=clients.length;
+  $('#ow-active').textContent=clients.filter(c=>c.state==='active').length;
+  $('#ow-pend').textContent=clients.filter(c=>c.state==='pending'||c.state==='waiting_provision').length;
+  if(!clients.length){list.innerHTML='<div style="color:var(--t2);padding:16px">Aucun client pour l\'instant.</div>';return;}
+  list.innerHTML=clients.map(c=>`<div class="card" style="margin-bottom:12px" id="cl-${c.id}">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:15px">${c.name||'—'}</div>
+        <div style="font-size:12px;color:var(--t2)">${c.email}</div>
+        <div style="font-size:12px;margin-top:2px"><span style="color:${c.state==='active'?'#3ee0d0':c.state==='suspended'?'#f87171':'#facc15'}">${STATE_LABEL[c.state]||c.state}</span> · ${PLAN_LABEL[c.plan]||c.plan||'—'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${c.state==='waiting_provision'||c.state==='pending'?`<button class="btn-s btn-prim" onclick="owProvision(${c.id})">⚙️ Provisionner</button>`:''}
+        ${c.state==='active'?`<button class="btn-s btn-err" onclick="owSub(${c.id},'suspend')">Suspendre</button>`:''}
+        ${c.state==='suspended'?`<button class="btn-s btn-prim" onclick="owSub(${c.id},'reactivate')">Réactiver</button>`:''}
+      </div>
+    </div>
+    ${c.bot_token?`<div style="margin-top:8px;font-size:12px;color:var(--t2)">🤖 Token: ${c.bot_token.slice(0,10)}••••••• · @${c.bot_username||'?'}</div>`:''}
+  </div>`).join('');
+}
+
+async function owProvision(id){
+  const token=prompt('Token bot Telegram (@BotFather):');
+  if(!token)return;
+  const btn=document.querySelector(`#cl-${id} .btn-prim`);if(btn){btn.disabled=true;btn.textContent='⏳';}
+  const d=await api('POST','/api/owner/me/provision',{client_id:id,bot_token:token}).catch(()=>null);
+  if(d&&d.ok){alert('✓ Bot provisionné !');renderOwner();}
+  else{alert('Erreur: '+(d&&d.error||'inconnue'));if(btn){btn.disabled=false;btn.textContent='⚙️ Provisionner';}}
+}
+
+async function owSub(id,action){
+  if(!confirm(action==='suspend'?'Suspendre ce client ?':'Réactiver ce client ?'))return;
+  const d=await api('POST','/api/owner/me/sub',{client_id:id,action}).catch(()=>null);
+  if(d&&d.ok){renderOwner();}
+  else alert('Erreur: '+(d&&d.error||'inconnue'));
+}
+
 /* ---------- Router ---------- */
 function routeAccount(acc){
   stopPoll();
   const state=acc.state;
-  $('#burger').classList.toggle('show',state==='active');
+  $('#burger').classList.toggle('show',state==='active'||acc.is_owner);
+  if(acc.is_owner){renderOwner(acc);show('v-own');return;}
   if(state==='needs_payment'){goPay(acc);}
   else if(state==='waiting_provision'){goWait(acc);}
   else if(state==='active'){renderDash(acc);show('v-dash');}
