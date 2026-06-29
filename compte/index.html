@@ -257,6 +257,10 @@ input:focus{outline:none;border-color:var(--teal);background:rgba(62,224,208,.06
         </div>
         <button class="btn btn-primary btn-block" id="pay-go" style="margin-top:6px">🔒 Payer avec Stripe</button>
         <p class="note">Paiement 100% sécurisé. Un code promo ? Vous pourrez le saisir directement sur la page Stripe.</p>
+        <div style="text-align:center;margin-top:12px;display:flex;gap:12px;justify-content:center">
+          <button id="pay-change-plan" style="background:none;border:none;color:var(--t2);font-size:13px;cursor:pointer;text-decoration:underline">Changer de plan</button>
+          <button id="pay-logout" style="background:none;border:none;color:var(--t2);font-size:13px;cursor:pointer;text-decoration:underline">Se déconnecter</button>
+        </div>
       </div>
     </section>
 
@@ -477,7 +481,8 @@ $('#auth-go').onclick=async()=>{
 
 /* ---------- Checkout ---------- */
 function goPay(acc){
-  selectedPlan=acc.plan||selectedPlan;
+  // URL plan param has priority over stored plan
+  if(!PLANS[selectedPlan]) selectedPlan = acc.plan || 'premium';
   const p=PLANS[selectedPlan]||PLANS.premium;
   $('#pay-plan').textContent=p.name;$('#pay-tag').textContent=p.tag;
   $('#pay-price').innerHTML=p.price+'€<small>/mois</small>';
@@ -485,11 +490,13 @@ function goPay(acc){
 }
 $('#pay-go').onclick=async()=>{
   const btn=$('#pay-go');btn.disabled=true;btn.textContent='Redirection…';
-  const d=await api('POST','/api/checkout').catch(()=>null);
+  const d=await api('POST','/api/checkout',{plan:selectedPlan}).catch(()=>null);
   btn.disabled=false;btn.textContent='🔒 Payer avec Stripe';
   if(d&&d.checkout_url){location.href=d.checkout_url;}
-  else flash($('#auth-msg')||document.body,'Erreur de paiement, réessaie.','err');
+  else flash($('#pay-go').parentElement,'Erreur de paiement, réessaie.','err');
 };
+$('#pay-logout').onclick=()=>{clearToken();selectedPlan='premium';show('v-auth');setAuthMode(true);};
+$('#pay-change-plan').onclick=()=>{location.href='/';};
 
 /* ---------- Waiting ---------- */
 function goWait(acc){
